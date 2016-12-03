@@ -1,0 +1,86 @@
+---
+title: "Exploratory_Analysis"
+author: "Paul Mack"
+date: "December 3, 2016"
+output: html_document
+---
+
+```{r read data}
+library(lubridate)
+library(ggplot2)
+library(scales)
+#data exploration of NYC Crash Data
+
+#function to drop na values from selected columns
+dropNA <- function(data, desiredCols) {
+  completeVec <- complete.cases(data[, desiredCols])
+  return(data[completeVec, ])
+}
+
+setwd("~/spatial_data_class/nyc_crashes")
+
+# read in crash data, and turn it into a SpatialPointsDataFrame
+crashes <- read.csv("data/NYPD_Motor_Vehicle_Collisions.csv")
+injured <- crashes[ which(crashes$NUMBER.OF.PERSONS.INJURED > 0), ]
+
+
+```
+
+Create Intermediate Variables for Injuries
+```{r, Variables}
+injured <- within(injured, {
+  
+  DATE <- as.Date(DATE, "%m/%d/%Y")
+  Year <- format(DATE, '%Y')
+  Month <- format(DATE, '%m')
+  Time <- as.POSIXct(strptime(TIME, "%H:%M"))
+  Time <- format(Time, "%H")
+  
+  #create clusters by type of injuries
+  Injury_Type <- NA
+  Injury_Type[NUMBER.OF.PEDESTRIANS.INJURED > 0 & NUMBER.OF.MOTORIST.INJURED == 0 & NUMBER.OF.CYCLIST.INJURED == 0] <- "Pedestrian"
+  Injury_Type[NUMBER.OF.MOTORIST.INJURED > 0 & NUMBER.OF.PEDESTRIANS.INJURED == 0 & NUMBER.OF.CYCLIST.INJURED == 0] <- "Motorist"
+  Injury_Type[NUMBER.OF.CYCLIST.INJURED > 0 & NUMBER.OF.MOTORIST.INJURED == 0 & NUMBER.OF.PEDESTRIANS.INJURED == 0] <- "Cyclist"
+  Injury_Type[NUMBER.OF.PEDESTRIANS.INJURED > 0 & NUMBER.OF.MOTORIST.INJURED > 0 & NUMBER.OF.CYCLIST.INJURED == 0] <- "Pedestrian / Motor"
+  Injury_Type[NUMBER.OF.PEDESTRIANS.INJURED > 0 & NUMBER.OF.MOTORIST.INJURED == 0 & NUMBER.OF.CYCLIST.INJURED > 0] <- "Pedestrian / Cyclist"
+  Injury_Type[NUMBER.OF.PEDESTRIANS.INJURED > 0 & NUMBER.OF.MOTORIST.INJURED > 0 & NUMBER.OF.CYCLIST.INJURED > 0] <- "Pedestrian / Cyclist / Motorist"
+})  
+
+```
+
+Make Barplots
+```{r Barplots}
+# plot overall distribution of injuries
+c <- ggplot(injured, aes(factor(injured$Month)))
+c + geom_bar(colour="black", fill = "blue") + xlab("Month") + ylab("Number Accidents with Injuries") + ggtitle("Month Which Injuries Occured")
+
+# plot overall distribution of injuries
+c <- ggplot(injured, aes(factor(injured$Injury_Type)))
+c + geom_bar(colour="black", fill = "blue") + xlab("Injury_Type") + ylab("Number Accidents with Injuries") + ggtitle("Number of Injuries by Type")
+
+cause <- data.frame(sort(table(injured$CONTRIBUTING.FACTOR.VEHICLE.1), decreasing = TRUE))
+cause <- data.frame(table(injured$CONTRIBUTING.FACTOR.VEHICLE.1))
+colnames(cause) <- c("Main_Cause", "Count")
+cause <- cause[order(cause$Count),] 
+cause <- tail(cause, 10)
+
+# Simple Horizontal Bar Plot with Added Labels
+# Fitting Labels
+par(las=2) # make label text perpendicular to axis
+par(mar=c(5,10,4,2)) # increase y-axis margin.
+barplot(cause$Count, main="Injury Main Cause", horiz=TRUE, names.arg=cause$Main_Cause, cex.names = 0.8)
+
+
+#plot overall distribution of cause of accident for injuries
+library(gridBase)
+barplot(prop.table(sort(table(injured$CONTRIBUTING.FACTOR.VEHICLE.1), decreasing = TRUE)[1:7]),horiz=TRUE, las=1, cex.names=0.45, col = "blue", space = 0.1, border=NA)
+## Use grid to add the labels    
+vps <- baseViewports()
+pushViewport(vps$inner, vps$figure, vps$plot)
+
+grid.text(names(DD),
+          x = unit(midpts, "native"), y=unit(-1, "lines"),
+          just="right", rot=50)
+
+
+```
