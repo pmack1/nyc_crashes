@@ -22,12 +22,33 @@ setwd("~/spatial_data_class/nyc_crashes")
 # read in crash data, and turn it into a SpatialPointsDataFrame
 crashes <- read.csv("data/NYPD_Motor_Vehicle_Collisions.csv")
 injured <- crashes[ which(crashes$NUMBER.OF.PERSONS.INJURED > 0), ]
+deaths <- crashes[ which(crashes$NUMBER.OF.PERSONS.KILLED > 0), ]
 
 
+#number of crashes
+crash_N <- length(crashes$UNIQUE.KEY)
+crash_N
+#number of crashes with injuries
+injury_N <- length(injured$UNIQUE.KEY)
+injury_N
+#number of crashes with deaths
+deaths_N <- length(deaths$UNIQUE.KEY)
+deaths_N
+
+#percentages
+
+#injured 
+injured_perc <- (injury_N) / crash_N
+injured_perc
+
+#death
+#injured 
+deaths_perc <- (deaths_N) / crash_N
+deaths_perc
 ```
 
 Create Intermediate Variables for Injuries
-```{r, Variables}
+```{r, Variables Injuries}
 injured <- within(injured, {
   
   DATE <- as.Date(DATE, "%m/%d/%Y")
@@ -41,46 +62,158 @@ injured <- within(injured, {
   Injury_Type[NUMBER.OF.PEDESTRIANS.INJURED > 0 & NUMBER.OF.MOTORIST.INJURED == 0 & NUMBER.OF.CYCLIST.INJURED == 0] <- "Pedestrian"
   Injury_Type[NUMBER.OF.MOTORIST.INJURED > 0 & NUMBER.OF.PEDESTRIANS.INJURED == 0 & NUMBER.OF.CYCLIST.INJURED == 0] <- "Motorist"
   Injury_Type[NUMBER.OF.CYCLIST.INJURED > 0 & NUMBER.OF.MOTORIST.INJURED == 0 & NUMBER.OF.PEDESTRIANS.INJURED == 0] <- "Cyclist"
-  Injury_Type[NUMBER.OF.PEDESTRIANS.INJURED > 0 & NUMBER.OF.MOTORIST.INJURED > 0 & NUMBER.OF.CYCLIST.INJURED == 0] <- "Pedestrian / Motor"
-  Injury_Type[NUMBER.OF.PEDESTRIANS.INJURED > 0 & NUMBER.OF.MOTORIST.INJURED == 0 & NUMBER.OF.CYCLIST.INJURED > 0] <- "Pedestrian / Cyclist"
-  Injury_Type[NUMBER.OF.PEDESTRIANS.INJURED > 0 & NUMBER.OF.MOTORIST.INJURED > 0 & NUMBER.OF.CYCLIST.INJURED > 0] <- "Pedestrian / Cyclist / Motorist"
+  Injury_Type[NUMBER.OF.PEDESTRIANS.INJURED > 0 & NUMBER.OF.MOTORIST.INJURED > 0 & NUMBER.OF.CYCLIST.INJURED == 0] <- "Mixed"
+  Injury_Type[NUMBER.OF.PEDESTRIANS.INJURED > 0 & NUMBER.OF.MOTORIST.INJURED == 0 & NUMBER.OF.CYCLIST.INJURED > 0] <- "Mixed"
+  Injury_Type[NUMBER.OF.PEDESTRIANS.INJURED > 0 & NUMBER.OF.MOTORIST.INJURED > 0 & NUMBER.OF.CYCLIST.INJURED > 0] <- "Mixed"
 })  
 
 ```
 
-Make Barplots
-```{r Barplots}
-# plot overall distribution of injuries
-c <- ggplot(injured, aes(factor(injured$Month)))
+Create Intermediate Variables for Deaths
+```{r Variables Death}
+deaths <- within(deaths, {
+  
+  DATE <- as.Date(DATE, "%m/%d/%Y")
+  Year <- format(DATE, '%Y')
+  Month <- format(DATE, '%m')
+  Time <- as.POSIXct(strptime(TIME, "%H:%M"))
+  Time <- format(Time, "%H")
+  
+  Injury_Type <- NA
+  Injury_Type[NUMBER.OF.PEDESTRIANS.KILLED > 0 & NUMBER.OF.MOTORIST.KILLED == 0 & NUMBER.OF.CYCLIST.KILLED == 0] <- "Pedestrian"
+  Injury_Type[NUMBER.OF.MOTORIST.KILLED > 0 & NUMBER.OF.PEDESTRIANS.KILLED == 0 & NUMBER.OF.CYCLIST.KILLED == 0] <- "Motorist"
+  Injury_Type[NUMBER.OF.CYCLIST.KILLED > 0 & NUMBER.OF.MOTORIST.KILLED == 0 & NUMBER.OF.PEDESTRIANS.KILLED == 0] <- "Cyclist"
+  Injury_Type[NUMBER.OF.PEDESTRIANS.KILLED > 0 & NUMBER.OF.MOTORIST.KILLED > 0 & NUMBER.OF.CYCLIST.KILLED == 0] <- "Mixed"
+  Injury_Type[NUMBER.OF.PEDESTRIANS.KILLED > 0 & NUMBER.OF.MOTORIST.KILLED == 0 & NUMBER.OF.CYCLIST.KILLED > 0] <- "Mixed"
+  Injury_Type[NUMBER.OF.PEDESTRIANS.KILLED > 0 & NUMBER.OF.MOTORIST.KILLED > 0 & NUMBER.OF.CYCLIST.KILLED > 0] <- "Mixed"
+})  
+
+```
+
+Examine Injuries Across Time
+
+```{r Injuries by Time}
+#Latest Date in Analysis:
+bydate <- crashes[order(crashes$DATE),]
+tail(bydate$DATE,1)
+
+#Earliest Date in Analysis:
+head(bydate$DATE, 1)
+
+# All Injuries by Year
+# plot overall distribution of injuries Exclude 2012 since it is not a full year of data (2016 isn't yet either but it is close and relevant 
+# to see direction current year is headed)
+c <- ggplot(injured[injured$Year != '2012',], aes(factor(injured[injured$Year != '2012',]$Year)))
+c + geom_bar(colour="black", fill = "blue") + xlab("Year") + ylab("Number Accidents with Injuries") + ggtitle("Number of Injuries by Year")
+
+#percentage change by year:
+y2013 <- nrow(injured[injured$Year == '2013',])
+y2014 <- nrow(injured[injured$Year == '2014',])
+y2015 <- nrow(injured[injured$Year == '2015',])
+diff_13_14 <- (y2014 - y2013) / y2014
+diff_14_15 <- (y2015 - y2014) / y2015
+#change 2013 to 2014
+diff_13_14
+#change 2014 to 2014
+diff_14_15
+
+# All Injuries by Month. Do not Include 2012 or 2016 since neither were full years
+c <- ggplot(injured[injured$Year != '2012' & injured$Year != '2016',], aes(factor(injured[injured$Year != '2012' & injured$Year != '2016',]$Month)))
 c + geom_bar(colour="black", fill = "blue") + xlab("Month") + ylab("Number Accidents with Injuries") + ggtitle("Month Which Injuries Occured")
+
+#Hour of Day
+c <- ggplot(injured, aes(factor(injured$Time)))
+c + geom_bar(colour="black", fill = "blue") + xlab("Hour") + ylab("Number Accidents with Injuries") + ggtitle("Hour Which Injuries Occured")
+
+```
+
+Examine Fatalities Across Time
+```{r Fatalities by Time}
+
+# All Fatalities by Year
+# plot overall distribution of injuries Exclude 2012 since it is not a full year of data (2016 isn't yet either but it is close and relevant 
+# to see direction current year is headed)
+c <- ggplot(deaths[deaths$Year != '2012',], aes(factor(deaths[deaths$Year != '2012',]$Year)))
+c + geom_bar(colour="black", fill = "blue") + xlab("Year") + ylab("Number Accidents with Deaths") + ggtitle("Number of Deaths by Year")
+
+#percentage change by year:
+y2013 <- nrow(deaths[deaths$Year == '2013',])
+y2014 <- nrow(deaths[deaths$Year == '2014',])
+y2015 <- nrow(deaths[deaths$Year == '2015',])
+diff_13_14 <- (y2014 - y2013) / y2014
+diff_14_15 <- (y2015 - y2014) / y2015
+
+#change 2013 to 2014
+diff_13_14
+#change 2014 to 2014
+diff_14_15
+
+
+# All Deaths by Month
+c <- ggplot(deaths[deaths$Year != '2012' & deaths$Year != '2016',], aes(factor(deaths[deaths$Year != '2012' & deaths$Year != '2016',]$Month)))
+c + geom_bar(colour="black", fill = "blue") + xlab("Month") + ylab("Number Accidents with Deaths") + ggtitle("Month Which Deaths Occured")
+
+#Hour of Day
+c <- ggplot(deaths, aes(factor(deaths$Time)))
+c + geom_bar(colour="black", fill = "blue") + xlab("Hour of Day") + ylab("Number Accidents with Deaths") + ggtitle("Hour Which Deaths Occured")
+
+
+```
+Examine Injuries by Type and Cause
+```{r Injury Types and Cause}
 
 # plot overall distribution of injuries
 c <- ggplot(injured, aes(factor(injured$Injury_Type)))
-c + geom_bar(colour="black", fill = "blue") + xlab("Injury_Type") + ylab("Number Accidents with Injuries") + ggtitle("Number of Injuries by Type")
+c + geom_bar(colour="black", fill = "blue") + xlab("Injury Type") + ylab("Number Accidents with Injuries") + ggtitle("Number of Injuries by Type")
 
-cause <- data.frame(sort(table(injured$CONTRIBUTING.FACTOR.VEHICLE.1), decreasing = TRUE))
+# Barplot of Injury Main Cause
 cause <- data.frame(table(injured$CONTRIBUTING.FACTOR.VEHICLE.1))
 colnames(cause) <- c("Main_Cause", "Count")
 cause <- cause[order(cause$Count),] 
 cause <- tail(cause, 10)
 
-# Simple Horizontal Bar Plot with Added Labels
-# Fitting Labels
 par(las=2) # make label text perpendicular to axis
 par(mar=c(5,10,4,2)) # increase y-axis margin.
 barplot(cause$Count, main="Injury Main Cause", horiz=TRUE, names.arg=cause$Main_Cause, cex.names = 0.8)
 
 
-#plot overall distribution of cause of accident for injuries
-library(gridBase)
-barplot(prop.table(sort(table(injured$CONTRIBUTING.FACTOR.VEHICLE.1), decreasing = TRUE)[1:7]),horiz=TRUE, las=1, cex.names=0.45, col = "blue", space = 0.1, border=NA)
-## Use grid to add the labels    
-vps <- baseViewports()
-pushViewport(vps$inner, vps$figure, vps$plot)
+```
+Examine Deaths by Type and Cause
+```{r Deaths Type and Cause}
+# plot overall distribution of injuries
+c <- ggplot(deaths, aes(factor(deaths$Injury_Type)))
+c + geom_bar(colour="black", fill = "blue") + xlab("Death Type") + ylab("Number Accidents with Deaths") + ggtitle("Number of Death by Type")
 
-grid.text(names(DD),
-          x = unit(midpts, "native"), y=unit(-1, "lines"),
-          just="right", rot=50)
+# Barplot of Injury Main Cause
+cause <- data.frame(table(deaths$CONTRIBUTING.FACTOR.VEHICLE.1))
+colnames(cause) <- c("Main_Cause", "Count")
+cause <- cause[order(cause$Count),] 
+cause <- tail(cause, 10)
+
+par(las=2) # make label text perpendicular to axis
+par(mar=c(5,10,4,2)) # increase y-axis margin.
+barplot(cause$Count, main="Death Main Cause", horiz=TRUE, names.arg=cause$Main_Cause, cex.names = 0.8)
+```
+
+
+Make Stacked Plots Across Type
+```{r Stacked Plots Type}
+# Stacked Plot of Injuries by Type by Time of Day
+ggplot(injured, aes(x = factor(Time), fill = factor(Injury_Type))) + geom_bar(position = "fill", stat = "count") + xlab("Time") + ylab("%") + scale_y_continuous(labels = percent_format()) +
+    scale_fill_discrete(name = "Type of Injury")
+
+# Stacked Plot of Deaths by Type by Time of Day
+ggplot(deaths, aes(x = factor(Time), fill = factor(Injury_Type))) + geom_bar(position = "fill", stat = "count") + xlab("Time") + ylab("%") + scale_y_continuous(labels = percent_format()) +
+    scale_fill_discrete(name = "Type of Death")
+
+# Stacked Plot of Injuries by Type by Time of Year
+ggplot(injured[injured$Year != '2012' & injured$Year != '2016',], aes(x = factor(Year), fill = factor(Injury_Type))) + geom_bar(position = "fill", stat = "count") + xlab("Year") + ylab("%") + scale_y_continuous(labels = percent_format()) +
+    scale_fill_discrete(name = "Type of Injury")
+
+# Stacked Plot of Injuries by Type by Time of Year
+ggplot(deaths[deaths$Year != '2012' & deaths$Year != '2016',], aes(x = factor(Year), fill = factor(Injury_Type))) + geom_bar(position = "fill", stat = "count") + xlab("Year") + ylab("%") + scale_y_continuous(labels = percent_format()) +
+    scale_fill_discrete(name = "Type of Death")
+
 
 
 ```
