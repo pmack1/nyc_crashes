@@ -193,6 +193,9 @@ cause <- tail(cause, 10)
 par(las=2) # make label text perpendicular to axis
 par(mar=c(5,10,4,2)) # increase y-axis margin.
 barplot(cause$Count, main="Death Main Cause", horiz=TRUE, names.arg=cause$Main_Cause, cex.names = 0.8)
+
+# percent with unspecified
+nrow(injured[injured$CONTRIBUTING.FACTOR.VEHICLE.1 == 'Unspecified',]) / nrow(injured)
 ```
 
 
@@ -217,3 +220,44 @@ ggplot(deaths[deaths$Year != '2012' & deaths$Year != '2016',], aes(x = factor(Ye
 
 
 ```
+
+Write Out Datasets
+```{r}
+crashes_long_lat <- dropNA(crashes, c("LONGITUDE", "LATITUDE")) 
+
+#observations dropped
+dropped_crash_N <-  nrow(crashes) - nrow(crashes_long_lat)
+dropped_crash_N
+
+#total injured included
+injured_long_lat <- dropNA(injured, c("LONGITUDE", "LATITUDE"))
+nrow(injured_long_lat)
+#observations dropped
+dropped_injured_N <-  nrow(injured) - nrow(injured_long_lat)
+dropped_injured_N
+dropped_injured_perc <- (nrow(injured) - nrow(injured_long_lat) )/ nrow(injured)
+dropped_injured_perc
+
+#total deaths included 
+deaths_lat_long <- dropNA(deaths, c("LONGITUDE", "LATITUDE"))
+nrow(deaths_lat_long)
+#observations dropped
+dropped_deaths_N <-  nrow(deaths) - nrow(deaths_lat_long)
+dropped_deaths_N
+dropped_deaths_perc <- (nrow(deaths) - nrow(deaths_lat_long) )/ nrow(deaths)
+dropped_deaths_perc
+
+#create csv for injuries
+write.csv(injured_long_lat, file = "data/injured.csv",row.names=TRUE)
+#create csv for deaths
+write.csv(deaths_lat_long, file = "data/deaths.csv", row.names =  TRUE)
+
+#write R Files for injuries 2013 (used by geocoding data scripts)
+injured_long_lat_2013 <- injured_long_lat[injured_long_lat$Year == '2013',]
+write.csv(injured_long_lat_2013, file = "data/injured_2013.csv", row.names =  TRUE)
+
+#write R Files for deaths 2013 (used by geocoding data scripts)
+death_lat_long_2013 <- deaths_lat_long[deaths_lat_long$Year == '2013',]
+write.csv(death_lat_long_2013, file = "data/death_2013.csv", row.names =  TRUE)
+```
+
